@@ -208,15 +208,18 @@ with aba_calc:
     nomes_fil = [f["nome"] for f in st.session_state.filamentos]
     filamento_nome = st.selectbox("Filamento", nomes_fil)
 
-    gramas = st.number_input("Quantidade de filamento (gramas)", min_value=0.0, value=0.0, step=1.0)
+    gramas = st.number_input("Quantidade de filamento (gramas)", min_value=0.0, value=None, step=1.0, placeholder="0")
 
     col1, col2 = st.columns(2)
-    horas = col1.number_input("Horas", min_value=0, value=0, step=1)
-    minutos = col2.number_input("Minutos", min_value=0, max_value=59, value=0, step=1)
+    horas = col1.number_input("Horas", min_value=0, value=None, step=1, placeholder="0")
+    minutos = col2.number_input("Minutos", min_value=0, max_value=59, value=None, step=1, placeholder="0")
 
     canal = st.radio("Onde será vendida?", ["Shopee", "Por fora"], horizontal=True)
 
     if st.button("Calcular preço", type="primary", use_container_width=True):
+        gramas = gramas or 0.0
+        horas = horas or 0
+        minutos = minutos or 0
         if not nome_peca.strip():
             st.error("Digite o nome da peça.")
         elif gramas <= 0:
@@ -301,11 +304,11 @@ with aba_fil:
     st.divider()
     st.write("Cadastrar novo filamento")
     novo_nome = st.text_input("Nome do filamento", key="novo_fil_nome")
-    novo_preco = st.number_input("Preço por kg (R$)", min_value=0.0, value=0.0, step=1.0, key="novo_fil_preco")
+    novo_preco = st.number_input("Preço por kg (R$)", min_value=0.0, value=None, step=1.0, placeholder="0", key="novo_fil_preco")
     if st.button("Adicionar filamento"):
         if not novo_nome.strip():
             st.error("Digite o nome do filamento.")
-        elif novo_preco <= 0:
+        elif not novo_preco or novo_preco <= 0:
             st.error("Digite o preço por kg (maior que zero).")
         elif novo_nome.strip().lower() in [f["nome"].lower() for f in st.session_state.filamentos]:
             st.error("Esse filamento já existe.")
@@ -322,9 +325,9 @@ with aba_conf:
     cfg = st.session_state.config
     cfg["preco_energia"] = st.number_input("Preço da energia (R$/kWh)", min_value=0.0, value=float(cfg["preco_energia"]), step=0.05)
     cfg["potencia_impressora"] = st.number_input("Consumo da impressora (kW)", min_value=0.0, value=float(cfg["potencia_impressora"]), step=0.01)
-    cfg["margem_lucro"] = st.number_input("Margem de lucro (% sobre o custo)", min_value=0.0, value=float(cfg["margem_lucro"]), step=10.0)
+    cfg["margem_lucro"] = st.number_input("Margem de lucro (% sobre o custo)", min_value=0.0, value=float(cfg["margem_lucro"]), step=10.0, format="%g")
     cfg["taxa_shopee"] = st.number_input(
-        "Comissão da Shopee (%)", min_value=0.0, max_value=99.99, value=float(cfg["taxa_shopee"]), step=1.0,
+        "Comissão da Shopee (%)", min_value=0.0, max_value=99.99, value=float(cfg["taxa_shopee"]), step=1.0, format="%g",
         help="Precisa ficar abaixo de 100%.",
     )
     cfg["taxa_fixa_shopee"] = st.number_input("Taxa fixa da Shopee (R$ por item)", min_value=0.0, value=float(cfg["taxa_fixa_shopee"]), step=0.5)
