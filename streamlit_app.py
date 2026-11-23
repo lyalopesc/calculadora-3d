@@ -68,10 +68,16 @@ def carregar_tudo():
             dados = json.loads(texto)
             filamentos = dados.get("filamentos", filamentos)
             config.update(dados.get("config", {}))
-        for linha in aba_hist.get_all_values()[1:]:
-            if len(linha) >= 5 and linha[1]:
+        for linha in aba_hist.get_all_values():
+            if len(linha) >= 5 and linha[0] != "Data" and linha[1]:
+                # a planilha em português devolve números com vírgula (25,76)
                 historico.append(
-                    {"nome": linha[1], "canal": linha[2], "preco": float(linha[3]), "lucro": float(linha[4])}
+                    {
+                        "nome": linha[1],
+                        "canal": linha[2],
+                        "preco": float(linha[3].replace(",", ".")),
+                        "lucro": float(linha[4].replace(",", ".")),
+                    }
                 )
     return filamentos, config, historico
 
@@ -89,8 +95,8 @@ def salvar_dados():
 def salvar_calculo(registro):
     if usa_planilha():
         _, aba_hist = abrir_planilha()
-        if not aba_hist.get_all_values():
-            aba_hist.append_row(CABECALHO_HIST, value_input_option="RAW")
+        if aba_hist.acell("A1").value != "Data":
+            aba_hist.insert_row(CABECALHO_HIST, 1, value_input_option="RAW")
         aba_hist.append_row(
             [datetime.now().strftime("%d/%m/%Y %H:%M"), registro["nome"], registro["canal"],
              round(registro["preco"], 2), round(registro["lucro"], 2)],
