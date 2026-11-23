@@ -31,7 +31,19 @@ FILAMENTOS_PADRAO = [
     {"nome": "PLA", "preco_kg": 100.00},
     {"nome": "PETG", "preco_kg": 70.00},
 ]
-CABECALHO_HIST = ["Data", "Peça", "Canal", "Preço", "Lucro"]
+CABECALHO_HIST = [
+    "Data", "Peça", "Canal", "Preço", "Lucro", "Filamento", "Gramas", "Horas",
+    "Custo filamento", "Custo energia", "Embalagem", "Custo total",
+    "Margem %", "Comissão %", "Comissão R$", "Taxa fixa",
+]
+
+
+def num(texto):
+    # a planilha em português devolve números com vírgula (25,76); vazio vira 0
+    try:
+        return float(str(texto).replace(",", "."))
+    except ValueError:
+        return 0.0
 
 
 def usa_planilha():
@@ -70,13 +82,24 @@ def carregar_tudo():
             config.update(dados.get("config", {}))
         for linha in aba_hist.get_all_values():
             if len(linha) >= 5 and linha[0] != "Data" and linha[1]:
-                # a planilha em português devolve números com vírgula (25,76)
+                linha = linha + [""] * (len(CABECALHO_HIST) - len(linha))
                 historico.append(
                     {
                         "nome": linha[1],
                         "canal": linha[2],
-                        "preco": float(linha[3].replace(",", ".")),
-                        "lucro": float(linha[4].replace(",", ".")),
+                        "preco": num(linha[3]),
+                        "lucro": num(linha[4]),
+                        "filamento": linha[5],
+                        "gramas": num(linha[6]),
+                        "horas": num(linha[7]),
+                        "custo_filamento": num(linha[8]),
+                        "custo_energia": num(linha[9]),
+                        "embalagem": num(linha[10]),
+                        "custo_total": num(linha[11]),
+                        "margem": num(linha[12]),
+                        "taxa_pct": num(linha[13]),
+                        "comissao": num(linha[14]),
+                        "taxa_fixa": num(linha[15]),
                     }
                 )
     return filamentos, config, historico
@@ -95,11 +118,17 @@ def salvar_dados():
 def salvar_calculo(registro):
     if usa_planilha():
         _, aba_hist = abrir_planilha()
-        if aba_hist.acell("A1").value != "Data":
+        primeira = aba_hist.row_values(1)
+        if not primeira or primeira[0] != "Data":
             aba_hist.insert_row(CABECALHO_HIST, 1, value_input_option="RAW")
+        elif primeira != CABECALHO_HIST:
+            aba_hist.update(values=[CABECALHO_HIST], range_name="A1", value_input_option="RAW")
+        r = registro
         aba_hist.append_row(
-            [datetime.now().strftime("%d/%m/%Y %H:%M"), registro["nome"], registro["canal"],
-             round(registro["preco"], 2), round(registro["lucro"], 2)],
+            [datetime.now().strftime("%d/%m/%Y %H:%M"), r["nome"], r["canal"],
+             round(r["preco"], 2), round(r["lucro"], 2), r["filamento"], r["gramas"], round(r["horas"], 2),
+             round(r["custo_filamento"], 2), round(r["custo_energia"], 2), round(r["embalagem"], 2),
+             round(r["custo_total"], 2), r["margem"], r["taxa_pct"], round(r["comissao"], 2), round(r["taxa_fixa"], 2)],
             value_input_option="RAW",
         )
 
@@ -209,7 +238,14 @@ with aba_calc:
             r["canal"] = canal
             r["taxa_pct"] = taxa_pct
             st.session_state.resultado = r
-            registro = {"nome": r["nome"], "canal": canal, "preco": r["preco_venda"], "lucro": r["lucro"]}
+            registro = {
+                "nome": r["nome"], "canal": canal, "preco": r["preco_venda"], "lucro": r["lucro"],
+                "filamento": filamento_nome, "gramas": gramas, "horas": tempo_total,
+                "custo_filamento": r["custo_filamento"], "custo_energia": r["custo_energia"],
+                "embalagem": r["embalagem"], "custo_total": r["custo_total"],
+                "margem": cfg["margem_lucro"], "taxa_pct": taxa_pct,
+                "comissao": r["comissao"], "taxa_fixa": taxa_fixa,
+            }
             st.session_state.historico.append(registro)
             salvar_calculo(registro)
 
@@ -239,6 +275,11 @@ with aba_hist:
                 "Canal": h["canal"],
                 "Preço": brl(h["preco"]),
                 "Lucro": brl(h["lucro"]),
+                "Margem": f"{h.get('margem', 0):g}%" if h.get("margem") else "-",
+                "Custo total": brl(h["custo_total"]) if h.get("custo_total") else "-",
+                "Comissão + taxa fixa": brl(h.get("comissao", 0) + h.get("taxa_fixa", 0)),
+                "Filamento": h.get("filamento") or "-",
+                "Gramas": f"{h.get('gramas', 0):g}" if h.get("gramas") else "-",
             }
             for h in st.session_state.historico
         ]
